@@ -135,7 +135,6 @@ class NovaServers(utils.NovaScenario,
     @scenario.configure(context={"cleanup": ["nova", "cinder"]})
     def boot_server_from_volume_and_delete(self, image, flavor,
                                            volume_size,
-                                           volume_type=None,
                                            min_sleep=0, max_sleep=0,
                                            force_delete=False, **kwargs):
         """Boot a server from volume and then delete it.
@@ -148,15 +147,12 @@ class NovaServers(utils.NovaScenario,
         :param image: image to be used to boot an instance
         :param flavor: flavor to be used to boot an instance
         :param volume_size: volume size (in GB)
-        :param volume_type: specifies volume type when there are
-                            multiple backends
         :param min_sleep: Minimum sleep time in seconds (non-negative)
         :param max_sleep: Maximum sleep time in seconds (non-negative)
         :param force_delete: True if force_delete should be used
         :param kwargs: Optional additional arguments for server creation
         """
-        volume = self._create_volume(volume_size, imageRef=image,
-                                     volume_type=volume_type)
+        volume = self._create_volume(volume_size, imageRef=image)
         block_device_mapping = {"vda": "%s:::1" % volume.id}
         server = self._boot_server(None, flavor,
                                    block_device_mapping=block_device_mapping,
@@ -282,8 +278,7 @@ class NovaServers(utils.NovaScenario,
     @validation.required_openstack(users=True)
     @scenario.configure(context={"cleanup": ["nova", "cinder"]})
     def boot_server_from_volume(self, image, flavor, volume_size,
-                                volume_type=None, auto_assign_nic=False,
-                                **kwargs):
+                                auto_assign_nic=False, **kwargs):
         """Boot a server from volume.
 
         The scenario first creates a volume and then a server.
@@ -292,13 +287,10 @@ class NovaServers(utils.NovaScenario,
         :param image: image to be used to boot an instance
         :param flavor: flavor to be used to boot an instance
         :param volume_size: volume size (in GB)
-        :param volume_type: specifies volume type when there are
-                            multiple backends
         :param auto_assign_nic: True if NICs should be assigned
         :param kwargs: Optional additional arguments for server creation
         """
-        volume = self._create_volume(volume_size, imageRef=image,
-                                     volume_type=volume_type)
+        volume = self._create_volume(volume_size, imageRef=image)
         block_device_mapping = {"vda": "%s:::1" % volume.id}
         self._boot_server(None, flavor, auto_assign_nic=auto_assign_nic,
                           block_device_mapping=block_device_mapping,
@@ -657,7 +649,6 @@ class NovaServers(utils.NovaScenario,
     @scenario.configure(context={"cleanup": ["nova", "cinder"]})
     def boot_server_from_volume_and_live_migrate(self, image, flavor,
                                                  volume_size,
-                                                 volume_type=None,
                                                  block_migration=False,
                                                  disk_over_commit=False,
                                                  force_delete=False,
@@ -677,8 +668,6 @@ class NovaServers(utils.NovaScenario,
         :param image: image to be used to boot an instance
         :param flavor: flavor to be used to boot an instance
         :param volume_size: volume size (in GB)
-        :param volume_type: specifies volume type when there are
-                            multiple backends
         :param block_migration: Specifies the migration type
         :param disk_over_commit: Specifies whether to allow overcommit
                                  on migrated instance or not
@@ -687,8 +676,7 @@ class NovaServers(utils.NovaScenario,
         :param max_sleep: Maximum sleep time in seconds (non-negative)
         :param kwargs: Optional additional arguments for server creation
         """
-        volume = self._create_volume(volume_size, imageRef=image,
-                                     volume_type=volume_type)
+        volume = self._create_volume(volume_size, imageRef=image)
         block_device_mapping = {"vda": "%s:::1" % volume.id}
         server = self._boot_server(None, flavor,
                                    block_device_mapping=block_device_mapping,
@@ -901,7 +889,6 @@ class NovaServers(utils.NovaScenario,
     @validation.required_openstack(users=True)
     @scenario.configure(context={"cleanup": ["nova", "cinder"]})
     def boot_server_from_volume_snapshot(self, image, flavor, volume_size,
-                                         volume_type=None,
                                          auto_assign_nic=False, **kwargs):
         """Boot a server from a snapshot.
 
@@ -913,15 +900,116 @@ class NovaServers(utils.NovaScenario,
         :param image: image to be used to boot an instance
         :param flavor: flavor to be used to boot an instance
         :param volume_size: volume size (in GB)
-        :param volume_type: specifies volume type when there are
-                            multiple backends
         :param auto_assign_nic: True if NICs should be assigned
         :param kwargs: Optional additional arguments for server creation
         """
-        volume = self._create_volume(volume_size, imageRef=image,
-                                     volume_type=volume_type)
+        volume = self._create_volume(volume_size, imageRef=image)
         snapshot = self._create_snapshot(volume.id, False)
         block_device_mapping = {"vda": "%s:snap::1" % snapshot.id}
         self._boot_server(None, flavor, auto_assign_nic=auto_assign_nic,
                           block_device_mapping=block_device_mapping,
                           **kwargs)
+
+    @types.convert(snapshot={"type": "snapshot"},
+                   flavor={"type": "nova_flavor"})
+    @validation.required_services(consts.Service.NOVA, consts.Service.CINDER)
+    @validation.required_openstack(users=True)
+    @scenario.configure(context={"cleanup": []})
+    def boot_server_from_volume_snapshot2(self, snapshot, flavor, volume_size,
+                                         auto_assign_nic=False, **kwargs):
+        """Boot a server from a snapshot.
+
+        The scenario first creates a volume and creates a
+        snapshot from this volume, then boots a server from
+        the created snapshot.
+        Assumes that cleanup is done elsewhere.
+
+        :param image: image to be used to boot an instance
+        :param flavor: flavor to be used to boot an instance
+        :param volume_size: volume size (in GB)
+        :param auto_assign_nic: True if NICs should be assigned
+        :param kwargs: Optional additional arguments for server creation
+        """
+        #volume = self._create_volume(volume_size, imageRef=image)
+        #snapshot = self._create_snapshot(volume.id, False)
+        #block_device_mapping = {"vda": "%s:snap::1" % snapshot.id}
+	block_device_mapping_v2 = [{"boot_index": "0","uuid": snapshot,"source_type": "snapshot","volume_size": volume_size,"destination_type": "volume","delete_on_termination": True }]
+        self._boot_server(None, flavor, auto_assign_nic=auto_assign_nic,
+                          block_device_mapping_v2=block_device_mapping_v2,
+                          **kwargs)
+
+
+
+    @types.convert(snapshot={"type": "snapshot"},
+                   flavor={"type": "nova_flavor"})
+    @validation.required_services(consts.Service.NOVA, consts.Service.CINDER)
+    @validation.required_openstack(users=True)
+    @scenario.configure(context={"cleanup": ["nova","cinder"]})
+    def boot_server_from_volume_snapshot2_clean(self, snapshot, flavor, volume_size,
+                                         auto_assign_nic=False, **kwargs):
+        """Boot a server from a snapshot.
+
+        The scenario first creates a volume and creates a
+        snapshot from this volume, then boots a server from
+        the created snapshot.
+        Assumes that cleanup is done elsewhere.
+
+        :param image: image to be used to boot an instance
+        :param flavor: flavor to be used to boot an instance
+        :param volume_size: volume size (in GB)
+        :param auto_assign_nic: True if NICs should be assigned
+        :param kwargs: Optional additional arguments for server creation
+        """
+        #volume = self._create_volume(volume_size, imageRef=image)
+        #snapshot = self._create_snapshot(volume.id, False)
+        #block_device_mapping = {"vda": "%s:snap::1" % snapshot.id}
+	block_device_mapping_v2 = [{"boot_index": "0","uuid": snapshot,"source_type": "snapshot","volume_size": volume_size,"destination_type": "volume","delete_on_termination": True }]
+        self._boot_server(None, flavor, auto_assign_nic=auto_assign_nic,
+                          block_device_mapping_v2=block_device_mapping_v2,
+                          **kwargs)
+
+
+    """Volume-snap-network"""
+
+    @types.convert(snapshot={"type": "snapshot"},
+                   flavor={"type": "nova_flavor"},
+                   netwrk={"type": "netwrk"})
+    @validation.required_services(consts.Service.NOVA, consts.Service.CINDER)
+    @validation.required_openstack(users=True)
+    @scenario.configure(context={"cleanup": []})
+    def boot_server_from_volume_snapshot2_edit(self, snapshot, flavor, volume_size, netwrk,
+                                         auto_assign_nic=False, **kwargs):
+        """Boot a server from a snapshot.
+
+        The scenario first creates a volume and creates a
+        snapshot from this volume, then boots a server from
+        the created snapshot.
+        Assumes that cleanup is done elsewhere.
+
+        :param image: image to be used to boot an instance
+        :param flavor: flavor to be used to boot an instance
+        :param volume_size: volume size (in GB)
+        :param auto_assign_nic: True if NICs should be assigned
+        :param kwargs: Optional additional arguments for server creation
+        """
+        #volume = self._create_volume(volume_size, imageRef=image)
+        #snapshot = self._create_snapshot(volume.id, False)
+        #block_device_mapping = {"vda": "%s:snap::1" % snapshot.id}
+        block_device_mapping_v2 = [{"boot_index": "0","uuid": snapshot,"source_type": "snapshot","volume_size": volume_size,"destination_type": "volume","delete_on_termination": True }]
+        nic=[{'net-id': netwrk}]
+#        sec1= self._create_security_groups(1)
+#        print(sec1[0].name)
+#        self._create_rules_for_security_group_edit([sec1[0]],ip_protocol="tcp",cidr="0.0.0.0/0",from_port=22,to_port=22)
+#        self._create_rules_for_security_group_edit([sec1[0]],ip_protocol="icmp",cidr="0.0.0.0/0",from_port=-1,to_port=-1)
+#        self._create_rules_for_security_group_edit([sec1[0]],ip_protocol="tcp",cidr="0.0.0.0/0",from_port=1,to_port=65535)
+#        self._create_rules_for_security_group_edit([sec1[0]],ip_protocol="udp",cidr="0.0.0.0/0",from_port=1,to_port=65535)
+
+        server = self._boot_server(None, flavor, nics=nic,
+                          block_device_mapping_v2=block_device_mapping_v2, **kwargs)
+       
+        address = network_wrapper.wrap(self.clients, self).create_floating_ip(
+            tenant_id=server.tenant_id)
+        self._associate_floating_ip(server, address["ip"])
+        file=open("/home/grafana/custom-rally/vm-ip-address.txt",'a')
+        file.write(address["ip"]+'\n')
+        print(address["ip"])
