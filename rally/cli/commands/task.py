@@ -456,6 +456,10 @@ class TaskCommands(object):
                   task["uuid"])
             print(_("* To get raw JSON output of task results, run:"))
             print("\trally task results %s\n" % task["uuid"])
+            
+            # This will catch uuid and pass to another sub process which handle rally results
+            # product/admin/dashboard/openstack_dashboard/api/rest/rally.py
+            print("UUID = %s" % task["uuid"])
 
     @cliutils.args("--uuid", type=str, dest="task_id", help="UUID of task.")
     @envutils.with_default_task_id
