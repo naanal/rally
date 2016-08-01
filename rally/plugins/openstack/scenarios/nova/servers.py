@@ -1010,6 +1010,6 @@ class NovaServers(utils.NovaScenario,
         address = network_wrapper.wrap(self.clients, self).create_floating_ip(
             tenant_id=server.tenant_id)
         self._associate_floating_ip(server, address["ip"])
-        file=open("/home/grafana/custom-rally/vm-ip-address.txt",'a')
-        file.write(address["ip"]+'\n')
+ #       file=open("/home/grafana/custom-rally/vm-ip-address.txt",'a')
+ #       file.write(address["ip"]+'\n')
         print(address["ip"])
