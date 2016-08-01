@@ -136,6 +136,7 @@ class TaskCommands(object):
                                 deployment, task_instance=None):
         try:
             #input_task = self._load_task(task, task_args, task_args_file)
+            # Task format changed to json and it will accept only json 
 	    input_task = json.loads(task)
 	    print(input_task)
         except Exception as err:
